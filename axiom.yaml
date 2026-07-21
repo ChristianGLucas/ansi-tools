@@ -15,7 +15,7 @@ tags:
     - html
 nodes:
     - name: Strip
-      description: Removes every ANSI escape sequence (SGR color/style, cursor movement, OSC hyperlinks/titles — anything ansi-regex recognizes) from the input and returns the plain text, plus a count of how many escape-sequence occurrences were removed. A malformed or incomplete trailing escape sequence is left in place as literal text rather than causing an error. Wraps sindresorhus/strip-ansi (MIT) over the ReDoS-safe ansi-regex 6.2.2.
+      description: Removes every ANSI escape sequence (SGR color/style, cursor movement, OSC hyperlinks/titles — anything ansi-regex recognizes) from the input and returns the plain text, plus a count of how many escape-sequence occurrences were removed. Never crashes on malformed input, but is not always byte-perfect on it -- a bare truncated "\x1b[" with nothing after it is preserved as literal text, while a CSI sequence truncated right after its digits (no real final byte, e.g. "\x1b[38;5") is matched and removed anyway since ansi-regex's final-byte class also accepts a digit, silently dropping those trailing digits; an unterminated OSC sequence can similarly cause the CSI alternative to eat one leading character of the following real text. Both are inherited ansi-regex behaviors, not added by this node. Wraps sindresorhus/strip-ansi (MIT) over the ReDoS-safe ansi-regex 6.2.2.
       input: AnsiText
       output: StripResult
     - name: Detect

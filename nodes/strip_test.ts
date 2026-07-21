@@ -62,6 +62,43 @@ describe('Strip', () => {
     expect(result.getPlainText()).toBe('');
   });
 
+  // Adversarial-review finding (fixed by correcting the shipped claim, not
+  // the code — this is inherited ansi-regex 6.2.2 behavior, verified
+  // independently against the raw library, not a bug this node introduces).
+  // A bare truncated introducer with NO digits is preserved (asserted
+  // above); a CSI sequence truncated right after its numeric parameters
+  // (no true final byte) is instead consumed as if complete, because
+  // ansi-regex's final-byte character class also accepts a digit — so its
+  // trailing digit(s) are silently dropped rather than kept as text.
+  it('a CSI sequence truncated right after its digits (no true final byte) is consumed, not preserved -- its trailing digits are dropped', () => {
+    const input = new AnsiText();
+    input.setText(`Hello${ESC}[38;5`); // truncated 256-color code, no "m"
+    const result = strip(ctx, input);
+    expect(result.getError()).toBe('');
+    expect(result.getPlainText()).toBe('Hello'); // "38;5" is NOT preserved
+    expect(result.getCodesRemoved()).toBe(1);
+  });
+
+  it('a single truncated numeric-parameter digit is likewise consumed rather than preserved', () => {
+    const input = new AnsiText();
+    input.setText(`Hello${ESC}[3`);
+    const result = strip(ctx, input);
+    expect(result.getPlainText()).toBe('Hello');
+  });
+
+  it('an OSC sequence missing its BEL/ST terminator is not matched as OSC, but the CSI alternative can still eat one leading character of the following real text', () => {
+    const input = new AnsiText();
+    // No BEL/ST anywhere -- deliberately unterminated hyperlink escape.
+    input.setText(`${ESC}]8;;https://example.com no terminator here`);
+    const result = strip(ctx, input);
+    // ']' is a valid CSI intermediate byte and the digit "8" plus two empty
+    // ';' separators are valid CSI params, so "\x1b]8;;h" (ending on the
+    // "h" of "https", which falls in the CSI final-byte letter range)
+    // matches as one CSI sequence and is removed -- dropping that "h".
+    expect(result.getPlainText()).toBe('ttps://example.com no terminator here');
+    expect(result.getCodesRemoved()).toBe(1);
+  });
+
   it('is deterministic: two invocations on the same input return identical results', () => {
     const raw = `${sgr('32')}green${RESET}`;
     const input = new AnsiText();

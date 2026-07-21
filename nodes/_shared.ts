@@ -46,6 +46,32 @@ export function newEscapeRegex(): RegExp {
 // residual lastIndex state behind, so reuse here is safe.
 export const ANY_ESCAPE_RE = newEscapeRegex();
 
+// KNOWN, VERIFIED, INHERITED BEHAVIOR (found by adversarial review; do not
+// "fix" this by hand-rolling a stricter pattern — that would be
+// reimplementing what a battle-tested, actively maintained library already
+// owns, and is far more likely to introduce a new bug than to remove one.
+// The correct response was to document it precisely, which strip.ts's
+// JSDoc + this package's axiom.yaml Strip description now do):
+// ansi-regex's CSI final-byte character class ([\dA-PR-TZcf-nq-uy=><~])
+// also accepts a DIGIT as a valid final byte. Two consequences on
+// malformed/truncated input:
+//   1. A CSI sequence truncated right after its numeric parameters (no true
+//      final letter, e.g. "\x1b[38;5" with no trailing "m") still matches
+//      as if complete -- its last digit(s) are consumed as the "final
+//      byte", so Strip/ExtractCodes/ClassifyEscapes silently drop them
+//      rather than preserving them as literal text. A bare, digit-free
+//      introducer ("\x1b[" with nothing after it) is NOT affected -- it is
+//      correctly left as literal text, since there is no digit for the
+//      final-byte class to latch onto.
+//   2. An OSC sequence (e.g. a hyperlink) missing its BEL/ST terminator
+//      does not match the OSC alternative at all, but ']' is also a valid
+//      CSI intermediate byte -- so the CSI alternative can match starting
+//      from the same "\x1b]", consume a few digits/semicolons as bogus
+//      params, and land on an ordinary letter in the following real text as
+//      its "final byte", eating that one character.
+// Both are deterministic and non-crashing; see strip_test.ts for locked-in
+// regression cases.
+
 /** True when a CSI match's final byte is 'm' (dec 109) — i.e. it's SGR. */
 export function isSgr(match: string): boolean {
   return match.length > 0 && match[match.length - 1] === 'm';

@@ -33,9 +33,25 @@ Every result message carries a trailing `error` string field, empty on
 success. On a rejected request (oversized input, an out-of-range parameter,
 an unrecognized mode) it holds a short machine-stable code — `INPUT_TOO_LARGE`,
 `INVALID_WIDTH`, `INVALID_RANGE`, `INVALID_MODE`, `INDEX_OUT_OF_RANGE`,
-`CHANNEL_OUT_OF_RANGE` — and every other field is left at its zero value. No
-node throws or crashes on malformed input; a malformed or incomplete escape
-sequence in `text` is treated as literal text, never an error.
+`CHANNEL_OUT_OF_RANGE` — and every other field is left at its zero value,
+**except** `TruncateToWidth`'s `INVALID_WIDTH` case, which deliberately
+echoes the original `text` back unchanged (documented on `TruncateResult` in
+`messages/messages.proto`) so a caller can tell "rejected, here's what you
+sent" from "rejected, nothing survived". No node throws or crashes on
+malformed input.
+
+**Malformed/truncated escape sequences are never a crash, but are not always
+byte-perfect either.** `Strip`/`Detect`/`ExtractCodes`/`ClassifyEscapes` (the
+`ansi-regex`-backed nodes) and `Parse`/`ToHtml`/`ToStyleMap` (the
+`anser`-backed nodes) can disagree on a truncated sequence's trailing digits:
+`anser` keeps them as visible plain text (`"Hello\x1b[38;5"` → `"Hello38;5"`),
+while `ansi-regex`'s final-byte class also accepts a digit, so it instead
+matches and removes the whole thing (`"Hello\x1b[38;5"` → `"Hello"`, that
+"38;5" silently dropped). A bare, digit-free truncated introducer
+(`"\x1b["` with nothing after it) is preserved as literal text by both. See
+`nodes/strip.ts`'s doc comment and `nodes/_shared.ts` for the exact
+mechanism; both behaviors are inherited from the wrapped libraries, verified
+directly against them, and locked in by regression tests.
 
 ## Bounds
 
@@ -68,10 +84,13 @@ grayscale ramp) implements the published, independently-documented xterm-256
 standard directly; its test suite cross-checks the result against `anser`'s
 own independent implementation of the same standard.
 
-All direct dependencies are MIT, with one transitive `strip-ansi`
-dependency (`ansi-regex`, MIT) and `string-width`/`slice-ansi`'s transitive
-`get-east-asian-width` / `ansi-styles` / `is-fullwidth-code-point` (all MIT).
-No copyleft anywhere in the dependency tree.
+All direct dependencies are MIT. Transitively: `strip-ansi` depends on
+`ansi-regex` (MIT); `string-width` depends on `strip-ansi` and
+`get-east-asian-width` (MIT); `slice-ansi` depends on `ansi-styles` and
+`is-fullwidth-code-point` (MIT), and `ansi-styles` itself depends on
+`color-convert` (MIT), which depends on `color-name` (MIT). No copyleft
+anywhere in the dependency tree — verified with `npm ls --all` against the
+actual installed tree, not just each package's stated license field.
 
 ## Licence
 
