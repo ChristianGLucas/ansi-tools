@@ -1,0 +1,60 @@
+name: christiangeorgelucas/ansi-tools
+version: 0.1.0
+language: typescript
+description: Deterministic parsing, stripping, structural analysis, and HTML/color conversion of ANSI/SGR terminal escape sequences — for agents processing colored terminal output, CI logs, and command output. Wraps anser, ansi-regex, strip-ansi, slice-ansi and string-width (all MIT). Pure text in, text/struct/HTML out; no network, no wall-clock, no randomness; input capped at 2 MiB.
+author: Christian George Lucas
+license: MIT
+tags:
+    - ansi
+    - terminal
+    - sgr
+    - escape-codes
+    - cli
+    - logs
+    - color
+    - html
+nodes:
+    - name: Strip
+      description: Removes every ANSI escape sequence (SGR color/style, cursor movement, OSC hyperlinks/titles — anything ansi-regex recognizes) from the input and returns the plain text, plus a count of how many escape-sequence occurrences were removed. A malformed or incomplete trailing escape sequence is left in place as literal text rather than causing an error. Wraps sindresorhus/strip-ansi (MIT) over the ReDoS-safe ansi-regex 6.2.2.
+      input: AnsiText
+      output: StripResult
+    - name: Detect
+      description: Reports whether the input contains any ANSI escape sequence at all, and how many occurrences. Useful as a cheap pre-check before deciding whether to run Parse/Strip/ToHtml on a string. Wraps chalk/ansi-regex (MIT), the ReDoS-patched (6.2.2) release.
+      input: AnsiText
+      output: DetectResult
+    - name: Parse
+      description: Decomposes ANSI-colored text into an ordered list of styled spans, each carrying its literal text plus resolved foreground/background color as a comma-separated "r, g, b" string (already resolved from whichever color model set it — basic-16, 256-palette, or 24-bit truecolor) and decorations (bold, italic, underline, dim, blink, reverse, hidden, strikethrough). Concatenating every span's text reconstructs the plain text. Wraps IonicaBizau/anser's ansiToJson (MIT).
+      input: AnsiText
+      output: ParseResult
+    - name: ToHtml
+      description: Converts ANSI-colored text to HTML, wrapping each styled run in a <span> (inline styles by default, or CSS classes like "ansi-red-fg" when use_classes is true) with plain text HTML-escaped first. Only SGR color/style is rendered; cursor-movement and other non-SGR sequences are silently dropped, as they have no HTML representation. Wraps IonicaBizau/anser's ansiToHtml (MIT).
+      input: ToHtmlRequest
+      output: HtmlResult
+    - name: ToStyleMap
+      description: Produces plain text and its styling as a separate offset-addressed overlay — non-overlapping StyleRange entries (UTF-16 code-unit start/end offset into plain_text, plus resolved "r, g, b" color and decorations) — instead of interleaved spans. Useful when a caller already has the plain text (e.g. from a search index) and needs to re-attach styling by position, or wants to diff styling independent of text content. Derived from IonicaBizau/anser's ansiToJson (MIT).
+      input: AnsiText
+      output: StyleMapResult
+    - name: VisibleWidth
+      description: Computes the visible display width of text in terminal columns, ignoring ANSI escape sequences (0 columns) and correctly counting East-Asian wide/fullwidth characters and most emoji as 2 columns rather than 1. Wraps sindresorhus/string-width (MIT).
+      input: AnsiText
+      output: WidthResult
+    - name: TruncateToWidth
+      description: Truncates text to at most `width` visible columns without splitting a multi-byte escape sequence and without leaving an SGR style open past the cut — any color/style still active at the truncation point is explicitly reset in the output, so the returned text is always self-contained. `error` is "INVALID_WIDTH" and text echoes the input unchanged when width is negative. Wraps chalk/slice-ansi (MIT) sliced from 0.
+      input: TruncateRequest
+      output: TruncateResult
+    - name: SliceByColumn
+      description: Extracts the visible-column range [start, end) of the input — like a string slice, but counted in on-screen columns rather than characters/bytes, with styling preserved and any style left open at either cut point explicitly reset. `error` is "INVALID_RANGE" when start is negative or end < start; an end at or beyond the text's visible width slices through to the end. Wraps chalk/slice-ansi (MIT).
+      input: SliceRequest
+      output: SliceResult
+    - name: ExtractCodes
+      description: Lists every distinct SGR (color/style) escape sequence used in the input, in first-occurrence order, each with its raw form (e.g. "[1;31m"), parsed semicolon-separated numeric parameters, and how many times it occurs. Non-SGR sequences (cursor movement, OSC) are not included — use ClassifyEscapes to inspect those. Implemented against the SGR grammar ansi-regex (MIT) matches.
+      input: AnsiText
+      output: ExtractCodesResult
+    - name: ClassifyEscapes
+      description: Buckets every escape sequence in the input into three categories per ECMA-48 — SGR color/style (ends in "m"), other CSI (cursor movement, erase, scroll — any other CSI final byte), and OSC (hyperlinks, window-title-setting, terminated by BEL/ST) — and reports a count per category. Independently, strips only the categories the caller opts into (strip_sgr/strip_cursor/strip_osc) and returns that as stripped_text, leaving unrequested categories intact; requesting nothing returns the input unchanged. Categorization follows the same OSC-vs-CSI split as chalk/ansi-regex 6's own pattern (MIT).
+      input: ClassifyRequest
+      output: ClassifyResult
+    - name: ColorCodeToRgb
+      description: Converts an ANSI color reference in any of the three color models into concrete RGB and hex — mode "basic16" (index 0-15, the standard 8 colors plus their bright variants), mode "256" (index 0-255, the standard xterm palette — 0-15 system colors, 16-231 a 6x6x6 RGB cube, 232-255 a 24-step grayscale ramp), or mode "truecolor" (r, g, b supplied directly, validated and passed through). `error` is set ("INVALID_MODE", "INDEX_OUT_OF_RANGE", "CHANNEL_OUT_OF_RANGE") for an unrecognized mode or an out-of-range index/channel. Implements the standard xterm-256 palette formula (independently documented; cross-checked against anser's own PALETTE_COLORS table).
+      input: ColorCodeRequest
+      output: ColorRgbResult

@@ -1,0 +1,266 @@
+// This file defines the data contracts (messages) for your Axiom package.
+// Every node's --input and --output refers to a message defined here.
+//
+// Run `axiom create message <Name>` to scaffold a new message below.
+// Run `axiom generate` to compile these definitions into language bindings in gen/.
+//
+// DOCUMENTATION
+//   Comments written directly above a message or field declaration are extracted
+//   automatically at publish time and shown in the Axiom registry as documentation.
+//   Write your descriptions there — no separate doc files needed.
+//
+//   Leading comment  (no blank line before the declaration) → registry description ✓
+//   Detached comment (blank line before the declaration)    → ignored by registry  ✗
+//
+// This file is yours to edit. Axiom only appends new message blocks — it never
+// overwrites or removes content you have written.
+//
+// ERROR CONTRACT: every result message below carries a trailing `error`
+// string field. It is empty on success. On failure (oversized input,
+// out-of-range parameter, unrecognized mode) it holds a short machine-stable
+// code (e.g. "INPUT_TOO_LARGE", "INVALID_WIDTH") and every other field is
+// left at its zero value. Nodes never throw/crash on malformed input.
+
+syntax = "proto3";
+
+package christiangeorgelucas.ansi_tools;
+
+// The canonical input envelope: raw text that may or may not contain ANSI/SGR
+// terminal escape sequences (e.g. captured stdout/stderr, a CI log line).
+// Every node in this package accepts input built on this shape.
+message AnsiText {
+  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB;
+  // exceeding the cap is reported via the response's `error` field
+  // ("INPUT_TOO_LARGE"), never a crash.
+  string text = 1;
+}
+
+// Result of Strip: text with every ANSI escape sequence removed.
+message StripResult {
+  // The input with all recognized ANSI escape sequences removed.
+  string plain_text = 1;
+  // Count of escape-sequence occurrences that were removed.
+  int32 codes_removed = 2;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 3;
+}
+
+// Result of Detect: whether the input contains any ANSI escape sequences.
+message DetectResult {
+  // True if at least one ANSI escape sequence was found.
+  bool has_ansi = 1;
+  // Total count of escape-sequence occurrences found.
+  int32 code_count = 2;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 3;
+}
+
+// One contiguous run of text sharing a single style, as produced by Parse.
+message Span {
+  // The literal text content of this run (escape sequences removed).
+  string text = 1;
+  // Resolved foreground color as a comma-separated "r, g, b" string (e.g.
+  // "187, 0, 0"), already resolved from whichever color model set it —
+  // basic-16, 256-palette, or 24-bit truecolor. Empty when unset.
+  string fg = 2;
+  // Resolved background color, same "r, g, b" encoding as fg.
+  string bg = 3;
+  // All active text decorations for this run, e.g. "bold", "italic",
+  // "underline", "dim", "blink", "reverse", "hidden", "strikethrough".
+  repeated string decorations = 4;
+}
+
+// Result of Parse: the input decomposed into styled spans in order.
+message ParseResult {
+  // Styled runs in document order; concatenating span.text reconstructs the
+  // plain (escape-free) text.
+  repeated Span spans = 1;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 2;
+}
+
+// Input for ToHtml: text plus HTML rendering options.
+message ToHtmlRequest {
+  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  string text = 1;
+  // When true, emit CSS classes ("ansi-red-fg", "ansi-bright-blue-bg", ...)
+  // instead of inline styles, so colors can be themed via stylesheet.
+  bool use_classes = 2;
+}
+
+// Result of ToHtml.
+message HtmlResult {
+  // HTML with each styled run wrapped in a <span>; plain text is HTML-escaped.
+  string html = 1;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 2;
+}
+
+// One styled range over a plain-text offset span, as produced by ToStyleMap.
+message StyleRange {
+  // Start offset into plain_text (inclusive, UTF-16 code unit index).
+  int32 start = 1;
+  // End offset into plain_text (exclusive, UTF-16 code unit index).
+  int32 end = 2;
+  // Resolved foreground color, same "r, g, b" encoding as Span.fg.
+  string fg = 3;
+  // Resolved background color, same "r, g, b" encoding as Span.bg.
+  string bg = 4;
+  // Active decorations for this range, same values as Span.decorations.
+  repeated string decorations = 5;
+}
+
+// Result of ToStyleMap: plain text and its styling kept as a separate,
+// offset-addressed overlay (rather than interleaved spans) — useful for
+// diffing or re-highlighting plain text a caller already has.
+message StyleMapResult {
+  // The input with all ANSI escape sequences removed.
+  string plain_text = 1;
+  // Non-overlapping style ranges over plain_text, in order. A stretch of
+  // plain_text not covered by any range has no active styling.
+  repeated StyleRange styles = 2;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 3;
+}
+
+// Result of VisibleWidth.
+message WidthResult {
+  // Visible display width: escape sequences contribute 0, most characters
+  // contribute 1, and East-Asian wide / fullwidth characters and most emoji
+  // contribute 2.
+  int32 width = 1;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 2;
+}
+
+// Input for TruncateToWidth.
+message TruncateRequest {
+  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  string text = 1;
+  // Maximum visible width to keep, in display columns. Must be >= 0.
+  int32 width = 2;
+}
+
+// Result of TruncateToWidth.
+message TruncateResult {
+  // The input truncated to at most `width` visible columns. Any SGR styling
+  // still open at the truncation point is explicitly reset so the returned
+  // text is self-contained (never leaves an unclosed style). On error,
+  // echoes the original input untouched.
+  string text = 1;
+  // True if the input's visible width exceeded `width` and truncation
+  // actually removed content.
+  bool truncated = 2;
+  // Empty on success; "INVALID_WIDTH" (width negative or absurdly large) or
+  // "INPUT_TOO_LARGE" otherwise.
+  string error = 3;
+}
+
+// Input for SliceByColumn.
+message SliceRequest {
+  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  string text = 1;
+  // Start column, inclusive, 0-based. Must be >= 0.
+  int32 start = 2;
+  // End column, exclusive, 0-based. Must be >= start. A value at or beyond
+  // the input's visible width means "through the end of the text".
+  int32 end = 3;
+}
+
+// Result of SliceByColumn.
+message SliceResult {
+  // The visible-column range [start, end) of the input, with styling
+  // preserved and any style still open at the cut points explicitly reset.
+  // Empty when error is set.
+  string text = 1;
+  // Empty on success; "INVALID_RANGE" (negative start/end, end < start, or
+  // either absurdly large) or "INPUT_TOO_LARGE" otherwise.
+  string error = 2;
+}
+
+// One distinct raw escape sequence found in the input, as produced by
+// ExtractCodes.
+message ExtractedCode {
+  // The raw escape sequence exactly as it appears in the input (e.g.
+  // "[1;31m").
+  string raw = 1;
+  // For an SGR (color/style) sequence, its semicolon-separated numeric
+  // parameters in order (e.g. [1, 31]). Empty for a bare "[m" (reset)
+  // or a non-SGR sequence.
+  repeated int32 params = 2;
+  // Number of times this exact raw sequence occurs in the input.
+  int32 occurrences = 3;
+}
+
+// Result of ExtractCodes: every distinct SGR/color escape sequence used.
+message ExtractCodesResult {
+  // Distinct SGR sequences in first-occurrence order.
+  repeated ExtractedCode codes = 1;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 2;
+}
+
+// Input for ClassifyEscapes.
+message ClassifyRequest {
+  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  string text = 1;
+  // When true, remove SGR (color/style, e.g. "[31m") sequences from
+  // the returned stripped_text.
+  bool strip_sgr = 2;
+  // When true, remove cursor-movement / erase / other non-SGR CSI sequences
+  // (e.g. "[2J", "[10;5H") from the returned stripped_text.
+  bool strip_cursor = 3;
+  // When true, remove OSC sequences (e.g. hyperlinks "]8;;url",
+  // window-title-setting) from the returned stripped_text.
+  bool strip_osc = 4;
+}
+
+// Result of ClassifyEscapes: counts of escape sequences by category, plus
+// the input with the requested categories removed.
+message ClassifyResult {
+  // Count of SGR (color/style) escape sequences found.
+  int32 sgr_count = 1;
+  // Count of cursor-movement/erase/other non-SGR CSI sequences found.
+  int32 cursor_count = 2;
+  // Count of OSC sequences (hyperlinks, title-setting, etc.) found.
+  int32 osc_count = 3;
+  // The input with only the requested (strip_*) categories removed; any
+  // category not requested is left intact. Equals the original input when
+  // no strip_* flag is set.
+  string stripped_text = 4;
+  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  string error = 5;
+}
+
+// Input for ColorCodeToRgb: one color reference in any of the three ANSI
+// color models.
+message ColorCodeRequest {
+  // Which color model `index`/`r`,`g`,`b` should be read under: "basic16"
+  // (index 0-15, the standard + bright 8-color palette), "256" (index
+  // 0-255, the standard xterm 256-color palette), or "truecolor" (r, g, b
+  // given directly, each 0-255 — a validating passthrough).
+  string mode = 1;
+  // Palette index, read when mode is "basic16" or "256".
+  int32 index = 2;
+  // Red channel 0-255, read when mode is "truecolor".
+  int32 r = 3;
+  // Green channel 0-255, read when mode is "truecolor".
+  int32 g = 4;
+  // Blue channel 0-255, read when mode is "truecolor".
+  int32 b = 5;
+}
+
+// Result of ColorCodeToRgb.
+message ColorRgbResult {
+  // Red channel, 0-255. Zero when error is set.
+  int32 r = 1;
+  // Green channel, 0-255. Zero when error is set.
+  int32 g = 2;
+  // Blue channel, 0-255. Zero when error is set.
+  int32 b = 3;
+  // Lowercase "#rrggbb" hex form of r, g, b. Empty when error is set.
+  string hex = 4;
+  // Empty on success; "INVALID_MODE" (mode is not one of "basic16", "256",
+  // "truecolor"), "INDEX_OUT_OF_RANGE", or "CHANNEL_OUT_OF_RANGE" otherwise.
+  string error = 5;
+}
