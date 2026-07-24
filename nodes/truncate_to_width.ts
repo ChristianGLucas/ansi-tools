@@ -2,7 +2,7 @@ import sliceAnsi from 'slice-ansi';
 import stringWidth from 'string-width';
 import { TruncateRequest, TruncateResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { checkTextSize, MAX_COLUMN } from './_shared';
+import { MAX_COLUMN } from './_shared';
 
 /**
  * Truncates text to at most `width` visible columns without splitting a
@@ -12,19 +12,13 @@ import { checkTextSize, MAX_COLUMN } from './_shared';
  * the input's visible width is already at or below `width`, the input is
  * returned byte-for-byte unchanged (no reset codes are added). `error` is
  * "INVALID_WIDTH" (and `text` echoes the original input unchanged) when
- * `width` is negative or exceeds 100,000,000; "INPUT_TOO_LARGE" when `text`
- * exceeds the 2 MiB cap.
+ * `width` is negative or exceeds 100,000,000.
  *
  * @param ax - Platform context: ax.log for logging, ax.secrets for secrets.
  */
 export function truncateToWidth(ax: AxiomContext, input: TruncateRequest): TruncateResult {
   const result = new TruncateResult();
   const text = input.getText() ?? '';
-  const sizeErr = checkTextSize(text);
-  if (sizeErr) {
-    result.setError(sizeErr);
-    return result;
-  }
   const width = input.getWidth() ?? 0;
 
   if (width < 0 || width > MAX_COLUMN) {

@@ -1,7 +1,6 @@
 import { ToHtmlRequest } from '../gen/messages_pb';
 import { toHtml } from './to_html';
 import { ctx, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('ToHtml', () => {
   it('wraps a colored run in a <span> with an inline style carrying the resolved color', () => {
@@ -39,11 +38,4 @@ describe('ToHtml', () => {
     expect(result.getHtml()).toBe('');
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new ToHtmlRequest();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    const result = toHtml(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-    expect(result.getHtml()).toBe('');
-  });
 });

@@ -16,10 +16,10 @@
 // overwrites or removes content you have written.
 //
 // ERROR CONTRACT: every result message below carries a trailing `error`
-// string field. It is empty on success. On failure (oversized input,
-// out-of-range parameter, unrecognized mode) it holds a short machine-stable
-// code (e.g. "INPUT_TOO_LARGE", "INVALID_WIDTH") and every other field is
-// left at its zero value. Nodes never throw/crash on malformed input.
+// string field. It is empty on success. On failure (out-of-range parameter,
+// unrecognized mode) it holds a short machine-stable code (e.g.
+// "INVALID_WIDTH") and every other field is left at its zero value. Nodes
+// never throw/crash on malformed input.
 
 syntax = "proto3";
 
@@ -29,9 +29,7 @@ package christiangeorgelucas.ansi_tools;
 // terminal escape sequences (e.g. captured stdout/stderr, a CI log line).
 // Every node in this package accepts input built on this shape.
 message AnsiText {
-  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB;
-  // exceeding the cap is reported via the response's `error` field
-  // ("INPUT_TOO_LARGE"), never a crash.
+  // Raw text, possibly containing ANSI escape sequences.
   string text = 1;
 }
 
@@ -41,7 +39,7 @@ message StripResult {
   string plain_text = 1;
   // Count of escape-sequence occurrences that were removed.
   int32 codes_removed = 2;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 3;
 }
 
@@ -51,7 +49,7 @@ message DetectResult {
   bool has_ansi = 1;
   // Total count of escape-sequence occurrences found.
   int32 code_count = 2;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 3;
 }
 
@@ -75,13 +73,13 @@ message ParseResult {
   // Styled runs in document order; concatenating span.text reconstructs the
   // plain (escape-free) text.
   repeated Span spans = 1;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 2;
 }
 
 // Input for ToHtml: text plus HTML rendering options.
 message ToHtmlRequest {
-  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  // Raw text, possibly containing ANSI escape sequences.
   string text = 1;
   // When true, emit CSS classes ("ansi-red-fg", "ansi-bright-blue-bg", ...)
   // instead of inline styles, so colors can be themed via stylesheet.
@@ -92,7 +90,7 @@ message ToHtmlRequest {
 message HtmlResult {
   // HTML with each styled run wrapped in a <span>; plain text is HTML-escaped.
   string html = 1;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 2;
 }
 
@@ -119,7 +117,7 @@ message StyleMapResult {
   // Non-overlapping style ranges over plain_text, in order. A stretch of
   // plain_text not covered by any range has no active styling.
   repeated StyleRange styles = 2;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 3;
 }
 
@@ -129,13 +127,13 @@ message WidthResult {
   // contribute 1, and East-Asian wide / fullwidth characters and most emoji
   // contribute 2.
   int32 width = 1;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 2;
 }
 
 // Input for TruncateToWidth.
 message TruncateRequest {
-  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  // Raw text, possibly containing ANSI escape sequences.
   string text = 1;
   // Maximum visible width to keep, in display columns. Must be >= 0.
   int32 width = 2;
@@ -151,14 +149,14 @@ message TruncateResult {
   // True if the input's visible width exceeded `width` and truncation
   // actually removed content.
   bool truncated = 2;
-  // Empty on success; "INVALID_WIDTH" (width negative or absurdly large) or
-  // "INPUT_TOO_LARGE" otherwise.
+  // Empty on success; "INVALID_WIDTH" (width negative or absurdly large)
+  // otherwise.
   string error = 3;
 }
 
 // Input for SliceByColumn.
 message SliceRequest {
-  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  // Raw text, possibly containing ANSI escape sequences.
   string text = 1;
   // Start column, inclusive, 0-based. Must be >= 0.
   int32 start = 2;
@@ -174,7 +172,7 @@ message SliceResult {
   // Empty when error is set.
   string text = 1;
   // Empty on success; "INVALID_RANGE" (negative start/end, end < start, or
-  // either absurdly large) or "INPUT_TOO_LARGE" otherwise.
+  // either absurdly large) otherwise.
   string error = 2;
 }
 
@@ -196,13 +194,13 @@ message ExtractedCode {
 message ExtractCodesResult {
   // Distinct SGR sequences in first-occurrence order.
   repeated ExtractedCode codes = 1;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 2;
 }
 
 // Input for ClassifyEscapes.
 message ClassifyRequest {
-  // Raw text, possibly containing ANSI escape sequences. Capped at 2 MiB.
+  // Raw text, possibly containing ANSI escape sequences.
   string text = 1;
   // When true, remove SGR (color/style, e.g. "[31m") sequences from
   // the returned stripped_text.
@@ -228,7 +226,7 @@ message ClassifyResult {
   // category not requested is left intact. Equals the original input when
   // no strip_* flag is set.
   string stripped_text = 4;
-  // Empty on success; "INPUT_TOO_LARGE" when text exceeds the 2 MiB cap.
+  // Empty on success.
   string error = 5;
 }
 

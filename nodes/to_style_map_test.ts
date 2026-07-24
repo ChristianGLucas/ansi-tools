@@ -1,7 +1,6 @@
 import { AnsiText } from '../gen/messages_pb';
 import { toStyleMap } from './to_style_map';
 import { ctx, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('ToStyleMap', () => {
   it('produces plain_text and a hand-verified offset range for a single styled run', () => {
@@ -44,10 +43,4 @@ describe('ToStyleMap', () => {
     expect(result.getStylesList()).toEqual([]);
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new AnsiText();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    const result = toStyleMap(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-  });
 });

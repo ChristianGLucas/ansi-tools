@@ -1,7 +1,6 @@
 import { TruncateRequest } from '../gen/messages_pb';
 import { truncateToWidth } from './truncate_to_width';
 import { ctx, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('TruncateToWidth', () => {
   it('truncates styled text to the requested width and closes the still-open style (independently verifiable: plain-text portion is exactly "Hel", and the result must contain no unclosed foreground escape after the last visible character)', () => {
@@ -60,11 +59,4 @@ describe('TruncateToWidth', () => {
     expect(result.getTruncated()).toBe(false);
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new TruncateRequest();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    input.setWidth(5);
-    const result = truncateToWidth(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-  });
 });

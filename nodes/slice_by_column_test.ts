@@ -1,7 +1,6 @@
 import { SliceRequest } from '../gen/messages_pb';
 import { sliceByColumn } from './slice_by_column';
 import { ctx, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('SliceByColumn', () => {
   it('slices a plain (no-ANSI) string identically to JS String.prototype.slice (independent oracle)', () => {
@@ -62,12 +61,4 @@ describe('SliceByColumn', () => {
     expect(result.getError()).toBe('INVALID_RANGE');
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new SliceRequest();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    input.setStart(0);
-    input.setEnd(1);
-    const result = sliceByColumn(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-  });
 });

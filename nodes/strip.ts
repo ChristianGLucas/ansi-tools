@@ -1,7 +1,7 @@
 import stripAnsi from 'strip-ansi';
 import { AnsiText, StripResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { checkTextSize, ANY_ESCAPE_RE } from './_shared';
+import { ANY_ESCAPE_RE } from './_shared';
 
 /**
  * Removes every ANSI escape sequence (SGR color/style, cursor movement, OSC
@@ -20,19 +20,13 @@ import { checkTextSize, ANY_ESCAPE_RE } from './_shared';
  * alternative, which can eat one leading character of whatever real text
  * follows. Both are inherited, verified behaviors of the underlying
  * ansi-regex pattern (not something this node adds on top), and both remain
- * deterministic and non-crashing. `text` over the 2 MiB cap yields `error` =
- * "INPUT_TOO_LARGE" rather than a crash.
+ * deterministic and non-crashing.
  *
  * @param ax - Platform context: ax.log for logging, ax.secrets for secrets.
  */
 export function strip(ax: AxiomContext, input: AnsiText): StripResult {
   const result = new StripResult();
   const text = input.getText() ?? '';
-  const sizeErr = checkTextSize(text);
-  if (sizeErr) {
-    result.setError(sizeErr);
-    return result;
-  }
 
   const matches = text.match(ANY_ESCAPE_RE);
   result.setCodesRemoved(matches ? matches.length : 0);

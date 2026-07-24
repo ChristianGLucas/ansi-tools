@@ -1,5 +1,5 @@
 name: christiangeorgelucas/ansi-tools
-version: 0.1.0
+version: 0.1.1
 language: typescript
 description: Deterministic parsing, stripping, structural analysis, and HTML/color conversion of ANSI/SGR terminal escape sequences — for agents processing colored terminal output, CI logs, and command output. Wraps anser, ansi-regex, strip-ansi, slice-ansi and string-width (all MIT). Pure text in, text/struct/HTML out; no network, no wall-clock, no randomness; input capped at 2 MiB.
 author: Christian George Lucas

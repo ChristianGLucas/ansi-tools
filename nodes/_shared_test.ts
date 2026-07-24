@@ -1,6 +1,4 @@
 import {
-  checkTextSize,
-  MAX_TEXT_LENGTH,
   palette256ToRgb,
   BASIC16_PALETTE,
   parseSgrParams,
@@ -11,15 +9,6 @@ import {
 } from './_shared';
 
 describe('_shared helpers', () => {
-  describe('checkTextSize', () => {
-    it('accepts text at exactly the cap', () => {
-      expect(checkTextSize('a'.repeat(MAX_TEXT_LENGTH))).toBe('');
-    });
-    it('rejects text one over the cap', () => {
-      expect(checkTextSize('a'.repeat(MAX_TEXT_LENGTH + 1))).toBe('INPUT_TOO_LARGE');
-    });
-  });
-
   describe('palette256ToRgb', () => {
     it('indices 0-15 delegate to BASIC16_PALETTE', () => {
       for (let i = 0; i < 16; i++) {

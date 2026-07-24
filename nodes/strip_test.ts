@@ -1,7 +1,6 @@
 import { AnsiText } from '../gen/messages_pb';
 import { strip } from './strip';
 import { ctx, ESC, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('Strip', () => {
   it('removes SGR sequences and returns plain text, with a hand-counted codes_removed (independent oracle: expected values derived by reading the escape sequences directly, not by calling any regex in the implementation)', () => {
@@ -54,13 +53,6 @@ describe('Strip', () => {
     expect(result.getCodesRemoved()).toBe(3);
   });
 
-  it('returns the INPUT_TOO_LARGE structured error (not a crash) for input over the 2 MiB cap', () => {
-    const input = new AnsiText();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    const result = strip(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-    expect(result.getPlainText()).toBe('');
-  });
 
   // Adversarial-review finding (fixed by correcting the shipped claim, not
   // the code — this is inherited ansi-regex 6.2.2 behavior, verified

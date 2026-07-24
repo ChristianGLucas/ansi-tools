@@ -1,33 +1,19 @@
 import ansiRegexFactory from 'ansi-regex';
 
-// Shared helpers for ansi-tools nodes: input-size bounding, the shared
-// escape-sequence regex (via ansi-regex — the same ReDoS-patched, actively
-// maintained pattern chalk/strip-ansi itself wraps), category classifiers
-// (SGR / other-CSI / OSC), and small formatting utilities reused across
-// nodes.
+// Shared helpers for ansi-tools nodes: the shared escape-sequence regex (via
+// ansi-regex — the same ReDoS-patched, actively maintained pattern
+// chalk/strip-ansi itself wraps), category classifiers (SGR / other-CSI /
+// OSC), and small formatting utilities reused across nodes.
 //
 // NOTE: every escape byte in this file is written as the \x1b hex escape,
 // never as a literal control character in source — a literal ESC byte is
 // invisible in a diff/editor and easy to corrupt silently.
-
-// Hard cap on any `text` field this package accepts. Bounds cost (regex scan,
-// allocation, span construction) up front, on the raw input, before any
-// parsing happens.
-export const MAX_TEXT_LENGTH = 2 * 1024 * 1024; // 2 MiB, measured in UTF-16 code units
 
 // Sanity cap on width/start/end parameters. Not required for safety (the
 // wrapped libraries are linear in input length, not in the requested width),
 // but rejects nonsensical requests deterministically instead of silently
 // clamping them.
 export const MAX_COLUMN = 100_000_000;
-
-/** Validates `text` against MAX_TEXT_LENGTH. Returns the structured error
- * code "INPUT_TOO_LARGE", or '' if valid — never throws. Every node checks
- * this first and returns early with `error` set rather than proceeding to
- * allocate/parse/regex-scan an oversized input. */
-export function checkTextSize(text: string): string {
-  return text.length > MAX_TEXT_LENGTH ? 'INPUT_TOO_LARGE' : '';
-}
 
 // Any recognized escape sequence (OSC hyperlink/title-setting, or CSI —
 // which covers both SGR color/style and cursor movement/erase/scroll).

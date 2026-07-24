@@ -1,25 +1,19 @@
 import { AnsiText, ExtractCodesResult, ExtractedCode } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { checkTextSize, ANY_ESCAPE_RE, isSgr, parseSgrParams } from './_shared';
+import { ANY_ESCAPE_RE, isSgr, parseSgrParams } from './_shared';
 
 /**
  * Lists every distinct SGR (color/style) escape sequence used in the input,
  * in first-occurrence order, each with its raw form (e.g. "\x1b[1;31m"),
  * parsed semicolon/colon-separated numeric parameters, and how many times it
  * occurs. Non-SGR sequences (cursor movement, OSC) are not included — use
- * ClassifyEscapes to inspect those. `text` over the 2 MiB cap yields `error`
- * = "INPUT_TOO_LARGE" rather than a crash.
+ * ClassifyEscapes to inspect those.
  *
  * @param ax - Platform context: ax.log for logging, ax.secrets for secrets.
  */
 export function extractCodes(ax: AxiomContext, input: AnsiText): ExtractCodesResult {
   const result = new ExtractCodesResult();
   const text = input.getText() ?? '';
-  const sizeErr = checkTextSize(text);
-  if (sizeErr) {
-    result.setError(sizeErr);
-    return result;
-  }
 
   const order: string[] = [];
   const counts = new Map<string, number>();

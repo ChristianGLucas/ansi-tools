@@ -1,6 +1,6 @@
 import { ClassifyRequest, ClassifyResult } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { checkTextSize, ANY_ESCAPE_RE, isOsc, isSgr } from './_shared';
+import { ANY_ESCAPE_RE, isOsc, isSgr } from './_shared';
 
 /**
  * Buckets every escape sequence in the input into three categories per
@@ -10,19 +10,13 @@ import { checkTextSize, ANY_ESCAPE_RE, isOsc, isSgr } from './_shared';
  * count per category. Independently, strips only the categories the caller
  * opts into (strip_sgr/strip_cursor/strip_osc) and returns that as
  * stripped_text, leaving unrequested categories intact; requesting nothing
- * returns the input unchanged. `text` over the 2 MiB cap yields `error` =
- * "INPUT_TOO_LARGE" rather than a crash.
+ * returns the input unchanged.
  *
  * @param ax - Platform context: ax.log for logging, ax.secrets for secrets.
  */
 export function classifyEscapes(ax: AxiomContext, input: ClassifyRequest): ClassifyResult {
   const result = new ClassifyResult();
   const text = input.getText() ?? '';
-  const sizeErr = checkTextSize(text);
-  if (sizeErr) {
-    result.setError(sizeErr);
-    return result;
-  }
   const stripSgr = input.getStripSgr() ?? false;
   const stripCursor = input.getStripCursor() ?? false;
   const stripOsc = input.getStripOsc() ?? false;

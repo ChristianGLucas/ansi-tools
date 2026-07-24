@@ -1,7 +1,6 @@
 import { AnsiText } from '../gen/messages_pb';
 import { visibleWidth } from './visible_width';
 import { ctx, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('VisibleWidth', () => {
   it('width of plain ASCII text equals its character count (trivial hand-derived fact, independent of the implementation)', () => {
@@ -41,10 +40,4 @@ describe('VisibleWidth', () => {
     expect(result.getWidth()).toBe(0);
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new AnsiText();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    const result = visibleWidth(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-  });
 });

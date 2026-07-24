@@ -1,7 +1,6 @@
 import { AnsiText } from '../gen/messages_pb';
 import { extractCodes } from './extract_codes';
 import { ctx, ESC, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('ExtractCodes', () => {
   it('lists distinct SGR codes in first-occurrence order with hand-verified raw form, params, and occurrence counts', () => {
@@ -50,10 +49,4 @@ describe('ExtractCodes', () => {
     expect(result.getCodesList()).toEqual([]);
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new AnsiText();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    const result = extractCodes(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-  });
 });

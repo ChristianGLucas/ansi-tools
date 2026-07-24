@@ -1,7 +1,6 @@
 import { ClassifyRequest } from '../gen/messages_pb';
 import { classifyEscapes } from './classify_escapes';
 import { ctx, ESC, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 const BEL = '\x07';
 
@@ -59,10 +58,4 @@ describe('ClassifyEscapes', () => {
     expect(result.getStrippedText()).toBe('plain text');
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new ClassifyRequest();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    const result = classifyEscapes(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-  });
 });

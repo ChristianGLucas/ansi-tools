@@ -1,7 +1,6 @@
 import { AnsiText } from '../gen/messages_pb';
 import { parse } from './parse';
 import { ctx, ESC, sgr, RESET } from './testkit';
-import { MAX_TEXT_LENGTH } from './_shared';
 
 describe('Parse', () => {
   it('splits colored text into spans with fg resolved to the standard xterm basic-16 RGB value (independent oracle: 31=red="187, 0, 0" is the documented ECMA/xterm standard basic color, not a value derived from this package\'s own code)', () => {
@@ -83,13 +82,6 @@ describe('Parse', () => {
     expect(result.getSpansList()).toEqual([]);
   });
 
-  it('returns the INPUT_TOO_LARGE structured error for input over the 2 MiB cap', () => {
-    const input = new AnsiText();
-    input.setText('a'.repeat(MAX_TEXT_LENGTH + 1));
-    const result = parse(ctx, input);
-    expect(result.getError()).toBe('INPUT_TOO_LARGE');
-    expect(result.getSpansList()).toEqual([]);
-  });
 
   it('is deterministic across repeated invocations', () => {
     const raw = `${sgr('1;35')}Magenta${RESET}`;

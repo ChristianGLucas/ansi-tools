@@ -1,7 +1,6 @@
 import Anser from 'anser';
 import { AnsiText, StyleMapResult, StyleRange } from '../gen/messages_pb';
 import { AxiomContext } from '../gen/axiomContext';
-import { checkTextSize } from './_shared';
 
 /**
  * Produces plain text and its styling as a separate offset-addressed overlay
@@ -10,19 +9,13 @@ import { checkTextSize } from './_shared';
  * of interleaved spans. Useful when a caller already has the plain text
  * (e.g. from a search index) and needs to re-attach styling by position, or
  * wants to diff styling independent of text content. A stretch of plain_text
- * not covered by any range has no active styling. `text` over the 2 MiB cap
- * yields `error` = "INPUT_TOO_LARGE" rather than a crash.
+ * not covered by any range has no active styling.
  *
  * @param ax - Platform context: ax.log for logging, ax.secrets for secrets.
  */
 export function toStyleMap(ax: AxiomContext, input: AnsiText): StyleMapResult {
   const result = new StyleMapResult();
   const text = input.getText() ?? '';
-  const sizeErr = checkTextSize(text);
-  if (sizeErr) {
-    result.setError(sizeErr);
-    return result;
-  }
 
   const entries = Anser.ansiToJson(text, { json: true, remove_empty: true });
   let plainText = '';
